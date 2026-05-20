@@ -7,15 +7,24 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "mongodb",
   }),
-  // We will enable GitHub OAuth as our primary frictionless login
   socialProviders: {
     github: {
       clientId: process.env.GITHUB_CLIENT_ID as string,
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
     },
   },
-  // We can also enable standard email/password or magic links later
   emailAndPassword: {
     enabled: true,
+  },
+  advanced: {
+    database: {
+      // Override the default ID generator to produce valid MongoDB ObjectIDs (24 hex characters)
+      generateId: () => {
+        const hex = "0123456789abcdef";
+        return Array.from({ length: 24 })
+          .map(() => hex[Math.floor(Math.random() * 16)])
+          .join("");
+      },
+    },
   },
 });
