@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// AUTH & MULTI-TENANCY (Better Auth / NextAuth)
+// ==========================================
+model User {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String      @unique
+  image         String?
+  createdAt     DateTime    @default(now())
+  
+  workspaces    WorkspaceMember[]
+}
+
+model Workspace {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  slug        String      @unique
+  plan        Plan        @default(FREE)
+  stripeId    String?     @unique
+  
+  members     WorkspaceMember[]
+  links       Link[]
+  domains     Domain[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model WorkspaceMember {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  role        Role        @default(MEMBER)
+  
+  userId      String      @db.ObjectId
+  workspaceId String      @db.ObjectId
+  
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+// ==========================================
+// CORE DOMAIN LOGIC
+// ==========================================
+model Domain {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  domain      String      @unique // e.g., "l.acmecorp.com"
+  verified    Boolean     @default(false)
+  
+  workspaceId String      @db.ObjectId
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  links       Link[]
+}
+
+model Link {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  domain      String      // Custom domain or default (velink.com)
+  slug        String      @unique // The short code
+  url         String      // The destination
+  
+  // Features
+  password    String?     // Hashed password for protected links
+  expiresAt   DateTime?
+  archived    Boolean     @default(false)
+  
+  // Relations
+  workspaceId String      @db.ObjectId
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  
+  domainId    String?     @db.ObjectId
+  customDomain Domain?    @relation(fields: [domainId], references: [id])
+  
+  clicks      Click[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Composite index for fast lookups
+  @@unique([domain, slug])
+  @@index([workspaceId])
+}
+
+// ==========================================
+// ANALYTICS (Ingested asynchronously)
+// ==========================================
+model Click {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  timestamp   DateTime @default(now())
+  
+  // Parsed Analytics
+  country     String?  // e.g., "US", "IN"
+  city        String?  
+  device      String?  // Desktop, Mobile
+  browser     String?  // Chrome, Safari
+  os          String?  // macOS, iOS, Windows
+  referer     String?  // Twitter, LinkedIn, Direct
+  
+  linkId      String   @db.ObjectId
+  link        Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  // Indexes for timeseries charting and quick aggregation
+  @@index([linkId])
+  @@index([linkId, timestamp])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}

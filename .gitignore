@@ -66,3 +66,4 @@ logs
 
 # redis
 dump.rdb
+/src/generated/prisma
