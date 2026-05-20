@@ -8,18 +8,64 @@ datasource db {
 }
 
 // ==========================================
-// AUTH & MULTI-TENANCY (Better Auth / NextAuth)
+// AUTH & MULTI-TENANCY (Better Auth)
 // ==========================================
 model User {
-  id            String      @id @default(auto()) @map("_id") @db.ObjectId
-  name          String?
-  email         String      @unique
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
   image         String?
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   
+  sessions      Session[]
+  accounts      Account[]
   workspaces    WorkspaceMember[]
 }
 
+model Session {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  accountId             String
+  providerId            String
+  userId                String    @db.ObjectId
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Verification {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+// ==========================================
+// CORE DOMAIN LOGIC
+// ==========================================
 model Workspace {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
   name        String
@@ -48,12 +94,9 @@ model WorkspaceMember {
   @@unique([userId, workspaceId])
 }
 
-// ==========================================
-// CORE DOMAIN LOGIC
-// ==========================================
 model Domain {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  domain      String      @unique // e.g., "l.acmecorp.com"
+  domain      String      @unique 
   verified    Boolean     @default(false)
   
   workspaceId String      @db.ObjectId
@@ -63,16 +106,14 @@ model Domain {
 
 model Link {
   id          String      @id @default(auto()) @map("_id") @db.ObjectId
-  domain      String      // Custom domain or default (velink.com)
-  slug        String      @unique // The short code
-  url         String      // The destination
+  domain      String      
+  slug        String      @unique 
+  url         String      
   
-  // Features
-  password    String?     // Hashed password for protected links
+  password    String?     
   expiresAt   DateTime?
   archived    Boolean     @default(false)
   
-  // Relations
   workspaceId String      @db.ObjectId
   workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   
@@ -84,30 +125,27 @@ model Link {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  // Composite index for fast lookups
   @@unique([domain, slug])
   @@index([workspaceId])
 }
 
 // ==========================================
-// ANALYTICS (Ingested asynchronously)
+// ANALYTICS
 // ==========================================
 model Click {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   timestamp   DateTime @default(now())
   
-  // Parsed Analytics
-  country     String?  // e.g., "US", "IN"
+  country     String?  
   city        String?  
-  device      String?  // Desktop, Mobile
-  browser     String?  // Chrome, Safari
-  os          String?  // macOS, iOS, Windows
-  referer     String?  // Twitter, LinkedIn, Direct
+  device      String?  
+  browser     String?  
+  os          String?  
+  referer     String?  
   
   linkId      String   @db.ObjectId
   link        Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
 
-  // Indexes for timeseries charting and quick aggregation
   @@index([linkId])
   @@index([linkId, timestamp])
 }
