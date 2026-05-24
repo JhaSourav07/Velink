@@ -24,18 +24,22 @@ export default async function DashboardPage() {
     include: { workspace: true }
   });
 
-  // 3. Fetch all links for this workspace with their clicks telemetry
+  // 3. Fetch all links for this workspace with their clicks count
   const links = workspaceMember 
     ? await prisma.link.findMany({
         where: { workspaceId: workspaceMember.workspaceId },
-        include: { clicks: true },
+        include: {
+          _count: {
+            select: { clicks: true }
+          }
+        },
         orderBy: { createdAt: "desc" },
       })
     : [];
 
   // Derived metrics with actual live database data
   const totalLinks = links.length;
-  const totalClicks = links.reduce((sum, link) => sum + link.clicks.length, 0);
+  const totalClicks = links.reduce((sum, link) => sum + (link._count?.clicks || 0), 0);
   const firstName = session.user.name?.split(" ")[0] || "there";
 
   return (

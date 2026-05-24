@@ -1,15 +1,14 @@
 // src/app/[slug]/route.ts
 import { prisma } from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 import { NextRequest, NextResponse, userAgent } from "next/server";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  // In Next.js 15, params must be awaited
   const { slug } = await params;
 
-  // 1. Ignore static files, API routes, or reserved paths
   if (
     slug.startsWith("_next") || 
     slug.startsWith("api") || 
@@ -21,57 +20,65 @@ export async function GET(
   }
 
   try {
-    // 2. Look up the slug in the database
-    // We check against the current domain to support custom domains later
     const host = req.headers.get("host") || "localhost:3000";
-    const domain = host.split(":")[0]; // strips port for localhost
+    const domain = host.split(":")[0];
+    
+    const cacheKey = `link:${domain}:${slug}`;
+    let linkId: string | null = null;
 
-    const link = await prisma.link.findFirst({
-      where: {
-        slug: slug,
-        domain: domain === "localhost" ? "localhost" : domain,
-      },
-    });
+    let destinationUrl = await redis.get<string>(cacheKey);
 
-    // If no link is found, redirect to the homepage
-    if (!link) {
-      return NextResponse.redirect(new URL("/", req.url));
+    if (!destinationUrl) {
+      const link = await prisma.link.findFirst({
+        where: {
+          slug: slug,
+          domain: domain === "localhost" ? "localhost" : domain,
+        },
+      });
+
+      if (!link) {
+        return NextResponse.redirect(new URL("/", req.url));
+      }
+
+      destinationUrl = link.url;
+      linkId = link.id;
+
+      await redis.set(cacheKey, destinationUrl, { ex: 86400 });
     }
 
-    // 3. Extract Analytics (Device, OS, Browser, Location)
+    const response = NextResponse.redirect(destinationUrl);
+
     const { device, browser, os } = userAgent(req);
-    
-    // Vercel automatically injects geolocation headers in production
     const country = req.headers.get("x-vercel-ip-country") || "Unknown";
     const city = req.headers.get("x-vercel-ip-city") || "Unknown";
-    
-    // Parse the referer to see where the traffic came from (Twitter, LinkedIn, etc.)
     const refererHeader = req.headers.get("referer");
+    
     let referer = "Direct";
     if (refererHeader && !refererHeader.includes(host)) {
-      try {
-        referer = new URL(refererHeader).hostname;
-      } catch {
-        referer = refererHeader;
-      }
+      try { referer = new URL(refererHeader).hostname; } 
+      catch { referer = refererHeader; }
     }
 
-    // 4. Record the Click asynchronously 
-    // (We await this now, but in a multi-million click system, we'd push this to an Upstash Queue)
-    await prisma.click.create({
-      data: {
-        linkId: link.id,
-        country,
-        city,
-        device: device.type === "mobile" ? "Mobile" : device.type === "tablet" ? "Tablet" : "Desktop",
-        browser: browser.name || "Unknown",
-        os: os.name || "Unknown",
-        referer,
-      }
-    });
+    if (!linkId) {
+       const cachedLink = await prisma.link.findFirst({ select: { id: true }, where: { slug, domain }});
+       if (cachedLink) linkId = cachedLink.id;
+    }
 
-    // 5. Execute the 302 Redirect to the original destination
-    return NextResponse.redirect(link.url);
+    if (linkId) {
+      prisma.click.create({
+        data: {
+          linkId: linkId,
+          country,
+          city,
+          device: device.type === "mobile" ? "Mobile" : device.type === "tablet" ? "Tablet" : "Desktop",
+          browser: browser.name || "Unknown",
+          os: os.name || "Unknown",
+          referer,
+        }
+      }).catch(err => console.error("Failed to log async analytics:", err));
+    }
+
+    return response;
 
   } catch (error) {
     console.error("Redirect Engine Error:", error);

@@ -5,21 +5,22 @@ import { useState } from "react";
 import { Copy, Check, ExternalLink, BarChart2, Globe, CornerDownRight } from "lucide-react";
 import Link from "next/link";
 
-// Define the type based on our Prisma schema
+// Updated type to include Prisma's relational count
 type LinkItem = {
   id: string;
   domain: string;
   slug: string;
   url: string;
   createdAt: Date;
-  clicks?: { id: string }[];
+  _count?: {
+    clicks: number;
+  };
 };
 
 export function LinkList({ links }: { links: LinkItem[] }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCopy = (domain: string, slug: string, id: string) => {
-    // Construct the full short URL
     const shortUrl = `${domain === "localhost" ? "http://" : "https://"}${domain}/${slug}`;
     navigator.clipboard.writeText(shortUrl);
     
@@ -61,10 +62,11 @@ export function LinkList({ links }: { links: LinkItem[] }) {
             {/* Live Analytics Button */}
             <Link 
               href="/dashboard/analytics"
-              className="h-8 px-3 flex items-center gap-2 rounded-md bg-white/5 text-zinc-300 hover:text-white hover:bg-white/10 transition-colors text-xs font-semibold border border-white/5 hover:border-white/10 shadow-sm"
+              className="h-8 px-3 flex items-center gap-2 rounded-md bg-transparent text-zinc-400 hover:text-white hover:bg-white/5 transition-colors text-xs font-medium border border-transparent hover:border-white/10"
+              title="View Analytics"
             >
               <BarChart2 className="w-3.5 h-3.5" />
-              <span>{link.clicks?.length || 0} clicks</span>
+              <span>{link._count?.clicks || 0} clicks</span>
             </Link>
 
             {/* Test Link Button */}

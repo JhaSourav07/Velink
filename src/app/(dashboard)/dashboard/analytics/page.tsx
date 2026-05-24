@@ -25,8 +25,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     async function loadData() {
       const result = await getWorkspaceAnalytics();
       if (result.success) {
@@ -89,21 +91,25 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-sm font-medium text-white">Clicks over time</h2>
         </div>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data.chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ffffff" stopOpacity={0.15}/>
-                  <stop offset="95%" stopColor="#ffffff" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} dy={10} />
-              <YAxis hide={true} />
-              <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ffffff', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.2 }} />
-              <Area type="monotone" dataKey="clicks" stroke="#ffffff" strokeWidth={2} fillOpacity={1} fill="url(#colorClicks)" />
-            </AreaChart>
-          </ResponsiveContainer>
+        <div className="h-[300px] w-full flex items-center justify-center">
+          {!mounted ? (
+            <Loader2 className="w-5 h-5 text-zinc-600 animate-spin" />
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={data.chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorClicks" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} dy={10} />
+                <YAxis hide={true} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#ffffff', strokeWidth: 1, strokeDasharray: '4 4', opacity: 0.2 }} />
+                <Area type="monotone" dataKey="clicks" stroke="#ffffff" strokeWidth={2} fillOpacity={1} fill="url(#colorClicks)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
