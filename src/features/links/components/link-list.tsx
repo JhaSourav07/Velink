@@ -12,7 +12,7 @@ type LinkItem = {
   slug: string;
   url: string;
   createdAt: Date;
-  // We will add actual click counts in Phase 4
+  clicks?: { id: string }[];
 };
 
 export function LinkList({ links }: { links: LinkItem[] }) {
@@ -58,11 +58,14 @@ export function LinkList({ links }: { links: LinkItem[] }) {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 mt-4 sm:mt-0 shrink-0">
-            {/* Analytics Button (Placeholder for Phase 4) */}
-            <button className="h-8 px-3 flex items-center gap-2 rounded-md bg-transparent text-zinc-400 hover:text-white hover:bg-white/5 transition-colors text-xs font-medium border border-transparent hover:border-white/10">
+            {/* Live Analytics Button */}
+            <Link 
+              href="/dashboard/analytics"
+              className="h-8 px-3 flex items-center gap-2 rounded-md bg-white/5 text-zinc-300 hover:text-white hover:bg-white/10 transition-colors text-xs font-semibold border border-white/5 hover:border-white/10 shadow-sm"
+            >
               <BarChart2 className="w-3.5 h-3.5" />
-              <span>0 clicks</span>
-            </button>
+              <span>{link.clicks?.length || 0} clicks</span>
+            </Link>
 
             {/* Test Link Button */}
             <a 

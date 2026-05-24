@@ -36,9 +36,8 @@ export function DashboardNav({ userName, userEmail, userImage, workspaceName }: 
   ];
 
   const handleSignOut = async () => {
-    await authClient.signOut({
-      callbackURL: "/login",
-    });
+    await authClient.signOut();
+    window.location.href = "/login";
   };
 
   const getInitials = (name: string) => {
