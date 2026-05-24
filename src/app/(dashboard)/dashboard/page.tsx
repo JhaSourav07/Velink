@@ -36,7 +36,7 @@ export default async function DashboardPage() {
   const firstName = session.user.name?.split(" ")[0] || "there";
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-10 animate-fade-in-up">
       
       {/* 1. Welcome & Context Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
