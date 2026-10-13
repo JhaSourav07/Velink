@@ -151,6 +151,7 @@ export function DashboardNav({
         <div className="border-t border-white/5 pt-6 space-y-4">
           <div className="flex items-center gap-3">
             {userImage ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={userImage}
                 alt={userName}
@@ -194,6 +195,7 @@ export function DashboardNav({
           <div className="border-t border-white/5 pt-6 space-y-4">
             <div className="flex items-center gap-3">
               {userImage ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={userImage}
                   alt={userName}

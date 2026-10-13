@@ -1,7 +1,7 @@
 // src/app/(dashboard)/dashboard/analytics/page.tsx
 "use client";
 
-import { useEffect, useState, useTransition, useId } from "react";
+import { useEffect, useState, useId } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   getWorkspaceAnalytics,
@@ -61,23 +61,30 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<"24h" | "7d" | "30d" | "all">("7d");
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [, startTransition] = useTransition();
   const gradientId = useId();
 
-  const loadData = (linkId: string, range: "24h" | "7d" | "30d" | "all") => {
-    setLoading(true);
-    startTransition(async () => {
-      const result = await getWorkspaceAnalytics(linkId, range);
-      if (result.success && result.data) {
+  useEffect(() => {
+    let ignore = false;
+    getWorkspaceAnalytics(selectedLinkId, timeRange).then((result) => {
+      if (!ignore && result.success && result.data) {
         setData(result.data);
+        setLoading(false);
       }
-      setLoading(false);
     });
+    return () => {
+      ignore = true;
+    };
+  }, [selectedLinkId, timeRange]);
+
+  const handleSelectLink = (linkId: string) => {
+    setLoading(true);
+    setSelectedLinkId(linkId);
   };
 
-  useEffect(() => {
-    loadData(selectedLinkId, timeRange);
-  }, [selectedLinkId, timeRange]);
+  const handleSelectTimeRange = (range: "24h" | "7d" | "30d" | "all") => {
+    setLoading(true);
+    setTimeRange(range);
+  };
 
   const handleExportCSV = () => {
     if (!data) return;
@@ -123,7 +130,7 @@ export default function AnalyticsPage() {
               <Filter className="w-3.5 h-3.5 text-zinc-500 mr-2" />
               <select
                 value={selectedLinkId}
-                onChange={(e) => setSelectedLinkId(e.target.value)}
+                onChange={(e) => handleSelectLink(e.target.value)}
                 className="bg-transparent border-none outline-none text-xs text-zinc-300 cursor-pointer pr-1"
               >
                 <option value="all" className="bg-zinc-900 text-white">All Links</option>
@@ -148,7 +155,7 @@ export default function AnalyticsPage() {
             ).map((range) => (
               <button
                 key={range.id}
-                onClick={() => setTimeRange(range.id)}
+                onClick={() => handleSelectTimeRange(range.id)}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
                   timeRange === range.id
                     ? "bg-white text-black shadow"

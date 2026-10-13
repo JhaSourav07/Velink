@@ -39,17 +39,24 @@ export default function CustomDomainsPage() {
 
   const [isPending, startTransition] = useTransition();
 
-  const loadDomains = async () => {
-    setLoading(true);
+  const refreshDomains = async () => {
     const res = await getWorkspaceDomains();
     if (res.success && res.domains) {
       setDomains(res.domains);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    loadDomains();
+    let ignore = false;
+    getWorkspaceDomains().then((res) => {
+      if (!ignore && res.success && res.domains) {
+        setDomains(res.domains);
+        setLoading(false);
+      }
+    });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const handleAddDomain = (e: React.FormEvent<HTMLFormElement>) => {
@@ -66,7 +73,7 @@ export default function CustomDomainsPage() {
         setAddError(res.error);
       } else {
         setNewDomain("");
-        loadDomains();
+        refreshDomains();
       }
     });
   };
@@ -77,7 +84,7 @@ export default function CustomDomainsPage() {
       const res = await verifyCustomDomain(domainId);
       if (res.success) {
         setVerifyMessage(res.message || "Domain verified successfully!");
-        loadDomains();
+        refreshDomains();
       } else {
         setAddError(res.error || "Failed to verify domain.");
       }
@@ -87,7 +94,7 @@ export default function CustomDomainsPage() {
   const handleDelete = (domainId: string) => {
     startTransition(async () => {
       await deleteCustomDomain(domainId);
-      loadDomains();
+      refreshDomains();
     });
   };
 

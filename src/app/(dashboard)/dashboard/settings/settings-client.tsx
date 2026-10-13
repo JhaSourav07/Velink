@@ -149,6 +149,7 @@ export function SettingsClient({
         <div className="flex flex-col sm:flex-row sm:items-center gap-6">
           <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/10 text-white flex items-center justify-center text-xl font-bold overflow-hidden shrink-0">
             {user.image ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
             ) : (
               user.name.substring(0, 2).toUpperCase()
@@ -268,6 +269,7 @@ export function SettingsClient({
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                   {member.image ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={member.image} alt={member.name} className="w-full h-full object-cover" />
                   ) : (
                     member.name.substring(0, 2).toUpperCase()
@@ -320,7 +322,7 @@ export function SettingsClient({
             <h2 className="text-base font-bold text-red-400">Danger Zone</h2>
           </div>
           <p className="text-zinc-400 text-xs leading-relaxed">
-            Permanently delete <span className="text-white font-semibold">"{workspace.name}"</span> along with all associated shortened links, custom domains, and click telemetry. This action cannot be reversed.
+            Permanently delete <span className="text-white font-semibold">&ldquo;{workspace.name}&rdquo;</span> along with all associated shortened links, custom domains, and click telemetry. This action cannot be reversed.
           </p>
 
           {!deleteConfirm ? (

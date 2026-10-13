@@ -191,7 +191,7 @@ export default function LoginPage() {
           <div className="pt-2 text-center text-xs text-zinc-500">
             {mode === "signin" ? (
               <span>
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <button
                   type="button"
                   onClick={() => {
@@ -222,7 +222,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-6 text-center text-[11px] text-zinc-600">
-          By continuing, you agree to Velink's Terms of Service and Privacy Policy.
+          By continuing, you agree to Velink&apos;s Terms of Service and Privacy Policy.
         </div>
       </div>
     </div>

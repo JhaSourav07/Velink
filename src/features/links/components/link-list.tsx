@@ -371,6 +371,7 @@ export function LinkList({ links }: { links: LinkItem[] }) {
             </div>
 
             <div className="bg-white p-4 rounded-xl flex items-center justify-center shadow-xl">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={qrDataUrl}
                 alt={`QR code for ${qrModalLink.slug}`}
