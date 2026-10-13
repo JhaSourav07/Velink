@@ -41,18 +41,27 @@ export default async function DashboardLayout({
   // Gracefully generate a default personal workspace if user has none
   let currentWorkspace = workspaceMembership?.workspace;
   if (!currentWorkspace) {
-    currentWorkspace = await prisma.workspace.create({
-      data: {
-        name: "Personal Workspace",
-        slug: `personal-${session.user.id.substring(0, 8)}`,
-        members: {
-          create: {
-            userId: session.user.id,
-            role: "OWNER",
+    try {
+      currentWorkspace = await prisma.workspace.create({
+        data: {
+          name: "Personal Workspace",
+          slug: `personal-${session.user.id.slice(-10)}`,
+          members: {
+            create: {
+              userId: session.user.id,
+              role: "OWNER",
+            },
           },
         },
-      },
-    });
+      });
+    } catch (err) {
+      console.error("Auto-workspace creation fallback:", err);
+      const fallback = await prisma.workspaceMember.findFirst({
+        where: { userId: session.user.id },
+        include: { workspace: true },
+      });
+      currentWorkspace = fallback?.workspace;
+    }
   }
 
   return (
@@ -66,8 +75,8 @@ export default async function DashboardLayout({
         userName={session.user.name || "User"}
         userEmail={session.user.email}
         userImage={session.user.image}
-        workspaceName={currentWorkspace.name}
-        workspaceId={currentWorkspace.id}
+        workspaceName={currentWorkspace?.name || "Personal Workspace"}
+        workspaceId={currentWorkspace?.id || ""}
       />
 
       {/* Main Viewport Container */}

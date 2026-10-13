@@ -71,7 +71,7 @@ model Workspace {
   name        String
   slug        String      @unique
   plan        Plan        @default(FREE)
-  stripeId    String?     @unique
+  stripeId    String?
   
   members     WorkspaceMember[]
   links       Link[]

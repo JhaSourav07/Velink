@@ -60,8 +60,14 @@ export default async function DashboardPage() {
       })
     : [];
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const defaultDomain = new URL(appUrl).hostname;
+  const rawUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  let defaultDomain = "localhost";
+  try {
+    const formatted = rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`;
+    defaultDomain = new URL(formatted).hostname;
+  } catch {
+    defaultDomain = "localhost";
+  }
 
   // Derived metrics
   const totalLinks = links.length;
