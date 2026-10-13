@@ -144,19 +144,23 @@ export async function createShortLink(formData: FormData) {
       },
     });
 
-    // Populate Redis cache for instant first redirect
-    const cacheKey = `link:${targetDomain}:${customSlug}`;
-    await redis.set(
-      cacheKey,
-      {
-        id: createdLink.id,
-        url: createdLink.url,
-        hasPassword: Boolean(hashedPassword),
-        expiresAt: expiresAt ? expiresAt.toISOString() : null,
-        archived: false,
-      },
-      { ex: 86400 }
-    );
+    // Populate Redis cache for instant first redirect (non-fatal if cache is unavailable)
+    try {
+      const cacheKey = `link:${targetDomain}:${customSlug}`;
+      await redis.set(
+        cacheKey,
+        {
+          id: createdLink.id,
+          url: createdLink.url,
+          hasPassword: Boolean(hashedPassword),
+          expiresAt: expiresAt ? expiresAt.toISOString() : null,
+          archived: false,
+        },
+        { ex: 86400 }
+      );
+    } catch (cacheErr) {
+      console.warn("Non-fatal Redis cache write error during createShortLink:", cacheErr);
+    }
 
     revalidatePath("/dashboard");
     return { success: true, slug: customSlug };
@@ -221,19 +225,23 @@ export async function updateShortLink(linkId: string, formData: FormData) {
       },
     });
 
-    // Update Redis cache
-    const cacheKey = `link:${updated.domain}:${updated.slug}`;
-    await redis.set(
-      cacheKey,
-      {
-        id: updated.id,
-        url: updated.url,
-        hasPassword: Boolean(updated.password),
-        expiresAt: updated.expiresAt ? updated.expiresAt.toISOString() : null,
-        archived: updated.archived,
-      },
-      { ex: 86400 }
-    );
+    // Update Redis cache (non-fatal)
+    try {
+      const cacheKey = `link:${updated.domain}:${updated.slug}`;
+      await redis.set(
+        cacheKey,
+        {
+          id: updated.id,
+          url: updated.url,
+          hasPassword: Boolean(updated.password),
+          expiresAt: updated.expiresAt ? updated.expiresAt.toISOString() : null,
+          archived: updated.archived,
+        },
+        { ex: 86400 }
+      );
+    } catch (cacheErr) {
+      console.warn("Non-fatal Redis cache write error during updateShortLink:", cacheErr);
+    }
 
     revalidatePath("/dashboard");
     return { success: true };
@@ -262,19 +270,23 @@ export async function toggleArchiveLink(linkId: string) {
       data: { archived: !link.archived },
     });
 
-    // Update or clear Redis cache
-    const cacheKey = `link:${updated.domain}:${updated.slug}`;
-    await redis.set(
-      cacheKey,
-      {
-        id: updated.id,
-        url: updated.url,
-        hasPassword: Boolean(updated.password),
-        expiresAt: updated.expiresAt ? updated.expiresAt.toISOString() : null,
-        archived: updated.archived,
-      },
-      { ex: 86400 }
-    );
+    // Update or clear Redis cache (non-fatal)
+    try {
+      const cacheKey = `link:${updated.domain}:${updated.slug}`;
+      await redis.set(
+        cacheKey,
+        {
+          id: updated.id,
+          url: updated.url,
+          hasPassword: Boolean(updated.password),
+          expiresAt: updated.expiresAt ? updated.expiresAt.toISOString() : null,
+          archived: updated.archived,
+        },
+        { ex: 86400 }
+      );
+    } catch (cacheErr) {
+      console.warn("Non-fatal Redis cache write error during toggleArchiveLink:", cacheErr);
+    }
 
     revalidatePath("/dashboard");
     return { success: true, archived: updated.archived };
@@ -301,9 +313,13 @@ export async function deleteShortLink(linkId: string) {
     // Remove from database (cascades to clicks)
     await prisma.link.delete({ where: { id: linkId } });
 
-    // Evict from Redis cache
-    const cacheKey = `link:${link.domain}:${link.slug}`;
-    await redis.del(cacheKey);
+    // Evict from Redis cache (non-fatal)
+    try {
+      const cacheKey = `link:${link.domain}:${link.slug}`;
+      await redis.del(cacheKey);
+    } catch (cacheErr) {
+      console.warn("Non-fatal Redis cache eviction error during deleteShortLink:", cacheErr);
+    }
 
     revalidatePath("/dashboard");
     return { success: true };

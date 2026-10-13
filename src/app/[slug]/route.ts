@@ -52,8 +52,12 @@ export async function GET(
         archived: link.archived,
       };
 
-      // Cache the JSON payload for 24h
-      await redis.set(cacheKey, linkData, { ex: 86400 });
+      // Cache the JSON payload for 24h (non-fatal if cache unavailable)
+      try {
+        await redis.set(cacheKey, linkData, { ex: 86400 });
+      } catch (cacheErr) {
+        console.warn("Non-fatal Redis cache write error in redirect:", cacheErr);
+      }
     }
 
     // 3. ARCHIVED CHECK
