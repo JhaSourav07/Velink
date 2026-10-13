@@ -29,6 +29,7 @@ import {
   toggleArchiveLink,
   updateShortLink,
 } from "@/features/links/actions";
+import { handleActionError } from "@/lib/safe-action";
 
 export type LinkItem = {
   id: string;
@@ -102,14 +103,22 @@ export function LinkList({ links }: { links: LinkItem[] }) {
 
   const handleToggleArchive = (id: string) => {
     startTransition(async () => {
-      await toggleArchiveLink(id);
+      try {
+        await toggleArchiveLink(id);
+      } catch (err) {
+        alert(handleActionError(err));
+      }
     });
   };
 
   const handleDelete = (id: string) => {
     startTransition(async () => {
-      await deleteShortLink(id);
-      setDeletingId(null);
+      try {
+        await deleteShortLink(id);
+        setDeletingId(null);
+      } catch (err) {
+        alert(handleActionError(err));
+      }
     });
   };
 
@@ -121,11 +130,15 @@ export function LinkList({ links }: { links: LinkItem[] }) {
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
-      const result = await updateShortLink(editingLink.id, formData);
-      if (result.error) {
-        setEditError(result.error);
-      } else {
-        setEditingLink(null);
+      try {
+        const result = await updateShortLink(editingLink.id, formData);
+        if (result.error) {
+          setEditError(result.error);
+        } else {
+          setEditingLink(null);
+        }
+      } catch (err) {
+        setEditError(handleActionError(err));
       }
     });
   };

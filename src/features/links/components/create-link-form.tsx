@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { createShortLink } from "@/features/links/actions";
+import { handleActionError } from "@/lib/safe-action";
 import { Link2, Sparkles, Loader2, Settings2, Lock, Calendar, Globe } from "lucide-react";
 
 interface DomainOption {
@@ -29,21 +30,26 @@ export function CreateLinkForm({
     setError(null);
     setSuccess(null);
 
-    const formData = new FormData(event.currentTarget);
+    const targetForm = event.currentTarget;
+    const formData = new FormData(targetForm);
     formData.set("domain", selectedDomain);
 
-    const result = await createShortLink(formData);
+    try {
+      const result = await createShortLink(formData);
 
-    if (result.error) {
-      setError(result.error);
-    } else {
-      (event.target as HTMLFormElement).reset();
-      setShowAdvanced(false);
-      setSuccess(`Link created: /${result.slug}`);
-      setTimeout(() => setSuccess(null), 4000);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        targetForm.reset();
+        setShowAdvanced(false);
+        setSuccess(`Link created: /${result.slug}`);
+        setTimeout(() => setSuccess(null), 4000);
+      }
+    } catch (err: unknown) {
+      setError(handleActionError(err));
+    } finally {
+      setIsPending(false);
     }
-
-    setIsPending(false);
   }
 
   return (

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID || undefined,
 };
 
 export default nextConfig;

@@ -21,6 +21,7 @@ import {
   removeWorkspaceMember,
   deleteWorkspace,
 } from "@/features/workspace/actions";
+import { handleActionError } from "@/lib/safe-action";
 
 interface MemberItem {
   id: string;
@@ -82,12 +83,16 @@ export function SettingsClient({
     formData.set("name", workspaceName);
 
     startTransition(async () => {
-      const res = await updateWorkspace(workspace.id, formData);
-      if (res.error) {
-        setErrorStatus(res.error);
-      } else {
-        setSaveStatus("Workspace name updated successfully!");
-        setTimeout(() => setSaveStatus(null), 3000);
+      try {
+        const res = await updateWorkspace(workspace.id, formData);
+        if (res.error) {
+          setErrorStatus(res.error);
+        } else {
+          setSaveStatus("Workspace name updated successfully!");
+          setTimeout(() => setSaveStatus(null), 3000);
+        }
+      } catch (err) {
+        setErrorStatus(handleActionError(err));
       }
     });
   };
@@ -102,25 +107,33 @@ export function SettingsClient({
     formData.set("role", inviteRole);
 
     startTransition(async () => {
-      const res = await inviteWorkspaceMember(workspace.id, formData);
-      if (res.error) {
-        setInviteError(res.error);
-      } else {
-        setInviteEmail("");
-        setInviteMessage("Member added to workspace!");
-        setTimeout(() => setInviteMessage(null), 3000);
-        window.location.reload();
+      try {
+        const res = await inviteWorkspaceMember(workspace.id, formData);
+        if (res.error) {
+          setInviteError(res.error);
+        } else {
+          setInviteEmail("");
+          setInviteMessage("Member added to workspace!");
+          setTimeout(() => setInviteMessage(null), 3000);
+          window.location.reload();
+        }
+      } catch (err) {
+        setInviteError(handleActionError(err));
       }
     });
   };
 
   const handleRemoveMember = (memberId: string) => {
     startTransition(async () => {
-      const res = await removeWorkspaceMember(workspace.id, memberId);
-      if (res.error) {
-        alert(res.error);
-      } else {
-        window.location.reload();
+      try {
+        const res = await removeWorkspaceMember(workspace.id, memberId);
+        if (res.error) {
+          alert(res.error);
+        } else {
+          window.location.reload();
+        }
+      } catch (err) {
+        alert(handleActionError(err));
       }
     });
   };
@@ -128,11 +141,15 @@ export function SettingsClient({
   const handleDeleteWorkspace = () => {
     setDeleteError(null);
     startTransition(async () => {
-      const res = await deleteWorkspace(workspace.id);
-      if (res.error) {
-        setDeleteError(res.error);
-      } else {
-        window.location.href = "/dashboard";
+      try {
+        const res = await deleteWorkspace(workspace.id);
+        if (res.error) {
+          setDeleteError(res.error);
+        } else {
+          window.location.href = "/dashboard";
+        }
+      } catch (err) {
+        setDeleteError(handleActionError(err));
       }
     });
   };

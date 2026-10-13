@@ -21,6 +21,7 @@ import {
   verifyCustomDomain,
   deleteCustomDomain,
 } from "@/features/domains/actions";
+import { handleActionError } from "@/lib/safe-action";
 
 interface DomainItem {
   id: string;
@@ -68,12 +69,16 @@ export default function CustomDomainsPage() {
     formData.set("domain", newDomain);
 
     startTransition(async () => {
-      const res = await addCustomDomain(formData);
-      if (res.error) {
-        setAddError(res.error);
-      } else {
-        setNewDomain("");
-        refreshDomains();
+      try {
+        const res = await addCustomDomain(formData);
+        if (res.error) {
+          setAddError(res.error);
+        } else {
+          setNewDomain("");
+          refreshDomains();
+        }
+      } catch (err) {
+        setAddError(handleActionError(err));
       }
     });
   };
@@ -81,20 +86,28 @@ export default function CustomDomainsPage() {
   const handleVerify = (domainId: string) => {
     setVerifyMessage(null);
     startTransition(async () => {
-      const res = await verifyCustomDomain(domainId);
-      if (res.success) {
-        setVerifyMessage(res.message || "Domain verified successfully!");
-        refreshDomains();
-      } else {
-        setAddError(res.error || "Failed to verify domain.");
+      try {
+        const res = await verifyCustomDomain(domainId);
+        if (res.success) {
+          setVerifyMessage(res.message || "Domain verified successfully!");
+          refreshDomains();
+        } else {
+          setAddError(res.error || "Failed to verify domain.");
+        }
+      } catch (err) {
+        setAddError(handleActionError(err));
       }
     });
   };
 
   const handleDelete = (domainId: string) => {
     startTransition(async () => {
-      await deleteCustomDomain(domainId);
-      refreshDomains();
+      try {
+        await deleteCustomDomain(domainId);
+        refreshDomains();
+      } catch (err) {
+        setAddError(handleActionError(err));
+      }
     });
   };
 
