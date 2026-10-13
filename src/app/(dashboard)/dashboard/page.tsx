@@ -1,7 +1,7 @@
 // src/app/(dashboard)/dashboard/page.tsx
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CreateLinkForm } from "@/features/links/components/create-link-form";
 import { LinkList } from "@/features/links/components/link-list";
@@ -18,33 +18,58 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // 2. Fetch the user's workspace
-  const workspaceMember = await prisma.workspaceMember.findFirst({
-    where: { userId: session.user.id },
-    include: { workspace: true }
-  });
+  // 2. Resolve Active Workspace Context
+  const cookieStore = await cookies();
+  const activeWorkspaceId = cookieStore.get("velink_workspace_id")?.value;
+
+  let workspaceMember = null;
+  if (activeWorkspaceId) {
+    workspaceMember = await prisma.workspaceMember.findFirst({
+      where: { userId: session.user.id, workspaceId: activeWorkspaceId },
+      include: { workspace: true },
+    });
+  }
+
+  if (!workspaceMember) {
+    workspaceMember = await prisma.workspaceMember.findFirst({
+      where: { userId: session.user.id },
+      include: { workspace: true },
+    });
+  }
+
+  const workspaceId = workspaceMember?.workspaceId;
 
   // 3. Fetch all links for this workspace with their clicks count
-  const links = workspaceMember 
+  const links = workspaceId
     ? await prisma.link.findMany({
-        where: { workspaceId: workspaceMember.workspaceId },
+        where: { workspaceId },
         include: {
           _count: {
-            select: { clicks: true }
-          }
+            select: { clicks: true },
+          },
         },
         orderBy: { createdAt: "desc" },
       })
     : [];
 
-  // Derived metrics with actual live database data
+  // 4. Fetch custom domains for the creation form
+  const domains = workspaceId
+    ? await prisma.domain.findMany({
+        where: { workspaceId, verified: true },
+        select: { id: true, domain: true },
+      })
+    : [];
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const defaultDomain = new URL(appUrl).hostname;
+
+  // Derived metrics
   const totalLinks = links.length;
   const totalClicks = links.reduce((sum, link) => sum + (link._count?.clicks || 0), 0);
   const firstName = session.user.name?.split(" ")[0] || "there";
 
   return (
     <div className="space-y-10 animate-fade-in-up">
-      
       {/* 1. Welcoming & Status Context Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-white/5 pb-8">
         <div className="space-y-1.5">
@@ -53,24 +78,26 @@ export default async function DashboardPage() {
           </h1>
           <p className="text-zinc-400 text-sm flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Workspace Context: <span className="text-zinc-200 font-semibold">{workspaceMember?.workspace.name || "Personal"}</span>
+            Workspace Context:{" "}
+            <span className="text-zinc-200 font-semibold">
+              {workspaceMember?.workspace.name || "Personal"}
+            </span>
           </p>
         </div>
-        
+
         {/* Plan Upgrade / Context CTA Badge */}
         <Link
-          href="#pricing"
+          href="/dashboard/settings"
           className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-xl w-fit transition-all group"
         >
           <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20 group-hover:scale-110 transition-transform" />
-          <span className="text-xs font-bold text-zinc-300 group-hover:text-white">Free Plan</span>
+          <span className="text-xs font-bold text-zinc-300 group-hover:text-white">Workspace Settings</span>
           <ArrowRight className="w-3 h-3 text-zinc-500 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all" />
         </Link>
       </div>
 
-      {/* 2. Sleek Metrics Cards Grid */}
+      {/* 2. Metrics Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        
         {/* Active Links Metric */}
         <div className="bg-[#0A0A0A] border border-white/5 hover:border-white/10 rounded-2xl p-6 relative overflow-hidden group shadow-xl transition-all duration-300">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/[0.01] blur-[40px] rounded-full pointer-events-none" />
@@ -120,7 +147,6 @@ export default async function DashboardPage() {
             <p className="text-sm font-semibold text-white truncate">All systems fully operational</p>
           </div>
         </div>
-
       </div>
 
       {/* 3. Link Creation Module */}
@@ -129,7 +155,7 @@ export default async function DashboardPage() {
         <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-300 mb-4 flex items-center gap-2">
           <Zap className="w-4 h-4 text-zinc-500" /> Make a Shortened Link
         </h2>
-        <CreateLinkForm />
+        <CreateLinkForm domains={domains} defaultDomain={defaultDomain} />
       </div>
 
       {/* 4. Live Link Registry Overview */}
@@ -137,16 +163,15 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between px-1">
           <div className="space-y-1">
             <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-300">Workspace Links Registry</h2>
-            <p className="text-zinc-500 text-xs">Manage and examine shortened URLs generated inside your personal context.</p>
+            <p className="text-zinc-500 text-xs">Manage, edit, archive, and generate QR codes for your short URLs.</p>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-white/5 text-zinc-400 border border-white/5 shrink-0">
-            {links.length} Short URLs active
+            {links.length} Short URLs
           </span>
         </div>
         
         <LinkList links={links} />
       </div>
-
     </div>
   );
 }

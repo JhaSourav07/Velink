@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { NextRequest, NextResponse, userAgent } from "next/server";
 
-// Define the shape of our Redis cache payload
 interface LinkCache {
   id: string;
   url: string;
   hasPassword: boolean;
   expiresAt: string | null;
+  archived?: boolean;
 }
 
 export async function GET(
@@ -23,7 +23,7 @@ export async function GET(
     slug === "favicon.ico" || 
     slug === "dashboard" || 
     slug === "login" ||
-    slug === "p" // We will use /p/[slug] for the password page
+    slug === "p"
   ) {
     return NextResponse.next();
   }
@@ -39,7 +39,7 @@ export async function GET(
     // 2. DATABASE FALLBACK
     if (!linkData) {
       const link = await prisma.link.findFirst({
-        where: { slug: slug, domain: domain === "localhost" ? "localhost" : domain },
+        where: { slug, domain: domain === "localhost" ? "localhost" : domain },
       });
 
       if (!link) return NextResponse.redirect(new URL("/", req.url));
@@ -49,29 +49,32 @@ export async function GET(
         url: link.url,
         hasPassword: link.password !== null,
         expiresAt: link.expiresAt ? link.expiresAt.toISOString() : null,
+        archived: link.archived,
       };
 
-      // Cache the JSON payload
+      // Cache the JSON payload for 24h
       await redis.set(cacheKey, linkData, { ex: 86400 });
     }
 
-    // 3. SECURITY INTERCEPT: Expiration Check
+    // 3. ARCHIVED CHECK
+    if (linkData.archived) {
+      return NextResponse.redirect(new URL("/?error=archived", req.url));
+    }
+
+    // 4. SECURITY INTERCEPT: Expiration Check
     if (linkData.expiresAt && new Date(linkData.expiresAt) < new Date()) {
-      // Return a 410 Gone or redirect to an "Expired" page. For now, redirect home.
       return NextResponse.redirect(new URL("/?error=expired", req.url));
     }
 
-    // 4. SECURITY INTERCEPT: Password Check
+    // 5. SECURITY INTERCEPT: Password Check
     if (linkData.hasPassword) {
-      // Do not log a click yet. Redirect them to the secure challenge page.
-      // We pass the domain in the query params so the challenge page knows which link to check.
       return NextResponse.redirect(new URL(`/p/${slug}?d=${domain}`, req.url));
     }
 
-    // 5. EXECUTE STANDARD REDIRECT
+    // 6. EXECUTE STANDARD REDIRECT
     const response = NextResponse.redirect(linkData.url);
 
-    // 6. ASYNC ANALYTICS (Only if not password protected - password clicks are logged after unlock)
+    // 7. ASYNC ANALYTICS
     const { device, browser, os } = userAgent(req);
     const country = req.headers.get("x-vercel-ip-country") || "Unknown";
     const city = req.headers.get("x-vercel-ip-city") || "Unknown";

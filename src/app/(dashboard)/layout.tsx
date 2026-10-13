@@ -1,7 +1,7 @@
 // src/app/(dashboard)/layout.tsx
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DashboardNav } from "@/components/dashboard-nav";
 
@@ -19,41 +19,44 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  // 2. Resolve Workspace Context
-  let workspaceMembership = await prisma.workspaceMember.findFirst({
-    where: { userId: session.user.id },
-    include: { workspace: true }
-  });
+  // 2. Resolve Workspace Context (Check cookie first)
+  const cookieStore = await cookies();
+  const activeWorkspaceId = cookieStore.get("velink_workspace_id")?.value;
 
-  // Gracefully generate a default personal workspace if they don't have one
+  let workspaceMembership = null;
+  if (activeWorkspaceId) {
+    workspaceMembership = await prisma.workspaceMember.findFirst({
+      where: { userId: session.user.id, workspaceId: activeWorkspaceId },
+      include: { workspace: true },
+    });
+  }
+
   if (!workspaceMembership) {
-    const newWorkspace = await prisma.workspace.create({
+    workspaceMembership = await prisma.workspaceMember.findFirst({
+      where: { userId: session.user.id },
+      include: { workspace: true },
+    });
+  }
+
+  // Gracefully generate a default personal workspace if user has none
+  let currentWorkspace = workspaceMembership?.workspace;
+  if (!currentWorkspace) {
+    currentWorkspace = await prisma.workspace.create({
       data: {
         name: "Personal Workspace",
         slug: `personal-${session.user.id.substring(0, 8)}`,
         members: {
           create: {
             userId: session.user.id,
-            role: "OWNER"
-          }
-        }
-      }
+            role: "OWNER",
+          },
+        },
+      },
     });
-    
-    workspaceMembership = {
-      id: "temp",
-      role: "OWNER",
-      userId: session.user.id,
-      workspaceId: newWorkspace.id,
-      workspace: newWorkspace
-    } as any;
   }
-
-  const workspaceName = workspaceMembership!.workspace.name;
 
   return (
     <div className="min-h-screen bg-black text-white relative font-sans">
-      
       {/* Dynamic Background visual glows */}
       <div className="absolute top-[10%] right-[10%] w-[350px] h-[350px] bg-zinc-500/[0.01] blur-[120px] rounded-full pointer-events-none z-0 animate-pulse-glow" />
       <div className="absolute bottom-[10%] left-[20%] w-[250px] h-[250px] bg-white/[0.01] blur-[100px] rounded-full pointer-events-none z-0 animate-pulse-glow" />
@@ -63,7 +66,8 @@ export default async function DashboardLayout({
         userName={session.user.name || "User"}
         userEmail={session.user.email}
         userImage={session.user.image}
-        workspaceName={workspaceName}
+        workspaceName={currentWorkspace.name}
+        workspaceId={currentWorkspace.id}
       />
 
       {/* Main Viewport Container */}
@@ -72,7 +76,6 @@ export default async function DashboardLayout({
           {children}
         </div>
       </main>
-
     </div>
   );
 }

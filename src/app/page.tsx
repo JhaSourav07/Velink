@@ -1,20 +1,15 @@
 // src/app/page.tsx
-import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { InteractiveSimulator } from "@/components/interactive-simulator";
 import { 
   Link2, 
-  Sparkles, 
   ArrowRight, 
-  Activity, 
-  MousePointerClick, 
   Globe, 
   Shield, 
   Zap, 
   BarChart3, 
-  ArrowUpRight, 
   Check 
 } from "lucide-react";
 

@@ -1,7 +1,7 @@
 // src/components/interactive-simulator.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link2, Sparkles, Copy, Check, Loader2, ArrowRight, Shield, Globe, Zap } from "lucide-react";
 import Link from "next/link";
 
@@ -39,7 +39,6 @@ export function InteractiveSimulator() {
         ? slug.toLowerCase().replace(/[^a-z0-9-]/g, "")
         : Math.random().toString(36).substring(2, 8);
       
-      const cleanUrl = url.replace(/^(https?:\/\/)?(www\.)?/, "");
       const host = typeof window !== "undefined" ? window.location.host : "velink.dev";
       setShortUrl(`${host}/${generatedSlug}`);
       setStatus("success");
